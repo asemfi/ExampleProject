@@ -10,9 +10,11 @@ mongodb.MongoClient.connect(url, function (err, db) {
   }
 });
 
-module.exports.findAllCharacters = async function (callback) {
+// ── Fix 3: Added limit and skip parameters for pagination (DoS mitigation) ───
+
+module.exports.findAllCharacters = async function (limit, skip, callback) {
   var col = dbPool.collection("characters");
-  col.find().toArray(async(err, characters) => {
+  col.find().skip(skip).limit(limit).toArray(async(err, characters) => {
     if (!err) {
       callback(null, characters);
     } else {
@@ -21,9 +23,9 @@ module.exports.findAllCharacters = async function (callback) {
   });
 };
 
-module.exports.findAllPlanets = async function (callback) {
+module.exports.findAllPlanets = async function (limit, skip, callback) {
   var col = dbPool.collection("planets");
-  col.find().toArray(async(err, planets) => {
+  col.find().skip(skip).limit(limit).toArray(async(err, planets) => {
     if (!err) {
       callback(null, planets);
     } else {
@@ -32,9 +34,9 @@ module.exports.findAllPlanets = async function (callback) {
   });
 };
 
-module.exports.findAllFilms = async function (callback) {
+module.exports.findAllFilms = async function (limit, skip, callback) {
   var col = dbPool.collection("films");
-  col.find().toArray(async(err, films) => {
+  col.find().skip(skip).limit(limit).toArray(async(err, films) => {
     if (!err) {
       callback(null, films);
     } else {
@@ -42,6 +44,8 @@ module.exports.findAllFilms = async function (callback) {
     }
   });
 };
+
+// ── No changes below this line ────────────────────────────────────────────────
 
 // retrieve single character
 module.exports.findCharacter = async function (id, callback) {
