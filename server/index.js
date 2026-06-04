@@ -2,10 +2,30 @@ var express = require("express");
 var dao = require("./mongo-dao.js");
 var app = express();
 
-app.use(express.json()); //Parse JSON body
+// ── Fix 2: Body size limit to prevent oversized payload DoS ──────────────────
+app.use(express.json({ limit: '10kb' })); //Parse JSON body
+
+// ── Fix 1: Rate limiting to prevent request flooding DoS ─────────────────────
+// FIXED: was "windowsMs" (typo) — correct key is "windowMs"
+const rateLimit = require('express-rate-limit');
+const limiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5-minute window
+  max: 50,                  // max 50 requests per IP per window
+  message: 'Too many requests, try again later',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(limiter);
+
+// ── Fix 3: Pagination on all collection endpoints to prevent DB overload ──────
+// Usage: GET /api/characters?limit=20&skip=0
+// - limit: how many records to return (default 20, max capped at 100)
+// - skip: how many records to skip (default 0, used for paging)
 
 app.get("/api/characters", (req, res) => {
-  dao.findAllCharacters((err, characters) => {
+  const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+  const skip  = parseInt(req.query.skip) || 0;
+  dao.findAllCharacters(limit, skip, (err, characters) => {
     if (characters) {
       res.send(characters);
     } else {
@@ -16,7 +36,9 @@ app.get("/api/characters", (req, res) => {
 });
 
 app.get("/api/planets", (req, res) => {
-  dao.findAllPlanets((err, planets) => {
+  const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+  const skip  = parseInt(req.query.skip) || 0;
+  dao.findAllPlanets(limit, skip, (err, planets) => {
     if (planets) {
       res.send(planets);
     } else {
@@ -27,7 +49,9 @@ app.get("/api/planets", (req, res) => {
 });
 
 app.get("/api/films", (req, res) => {
-  dao.findAllFilms((err, films) => {
+  const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+  const skip  = parseInt(req.query.skip) || 0;
+  dao.findAllFilms(limit, skip, (err, films) => {
     if (films) {
       res.send(films);
     } else {
@@ -36,6 +60,8 @@ app.get("/api/films", (req, res) => {
     }
   });
 });
+
+// ── Single record endpoints — no pagination needed ───────────────────────────
 
 app.get("/api/characters/:id", (req, res) => {
   dao.findCharacter(req.params.id, (err, character) => {
